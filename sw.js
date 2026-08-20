@@ -1,26 +1,68 @@
-const CACHE='za-chem-final-v9-audit-fix';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.svg','./data1.js','./data2.js','./data3.js','./extras.js','./notes.js','./app.js'];
+const CACHE='za-chem-final-v10-fast-open';
+const ASSETS=[
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './data1.js',
+  './data2.js',
+  './data3.js',
+  './extras.js',
+  './notes.js',
+  './app.js'
+];
 
-self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
-self.addEventListener('activate',e=>{
-  e.waitUntil(Promise.all([
-    self.clients.claim(),
-    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
-  ]));
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(keys =>
+        Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))
+      )
+    ])
+  );
 });
 
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET') return;
-  e.respondWith(
-    fetch(e.request).then(r=>{
-      const copy=r.clone();
-      if(r.ok && new URL(e.request.url).origin===self.location.origin){
-        caches.open(CACHE).then(c=>c.put(e.request,copy));
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  // 已缓存资源立即返回，同时后台静默检查更新。
+  // 这样第二次及以后打开 App 不再等待 GitHub 网络。
+  event.respondWith(
+    caches.match(req).then(cached => {
+      const networkUpdate = fetch(req)
+        .then(resp => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            event.waitUntil(
+              caches.open(CACHE).then(cache => cache.put(req, copy))
+            );
+          }
+          return resp;
+        })
+        .catch(() => null);
+
+      if (cached) {
+        return cached;
       }
-      return r;
-    }).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html')))
+
+      return networkUpdate.then(resp => {
+        if (resp) return resp;
+        if (req.mode === 'navigate') return caches.match('./index.html');
+        return Response.error();
+      });
+    })
   );
 });
