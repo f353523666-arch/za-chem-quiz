@@ -1,5 +1,5 @@
 {
-  "name": "中级注安·化工安全刷题",
+  "name": "中级注安·化工安全最终备考版",
   "short_name": "注安化工",
   "start_url": "./index.html",
   "scope": "./",
@@ -7,6 +7,7 @@
   "orientation": "portrait",
   "background_color": "#f4f7fb",
   "theme_color": "#0f172a",
+  "description": "中级注册安全工程师化工安全方向免费备考App：1000题、280必背卡、60案例、8模拟卷",
   "icons": [
     {
       "src": "./icon.svg",
